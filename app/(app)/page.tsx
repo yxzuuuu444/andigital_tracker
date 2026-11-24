@@ -8,7 +8,6 @@ import { useSheets } from "@/components/AppShell";
 import { useTracker } from "@/lib/tracker-context";
 import { computeMonthStats } from "@/lib/month-stats";
 import { categoryIcon } from "@/lib/icons";
-import { InsightsPanel } from "@/components/InsightsPanel";
 import { monthLabel, peso, prettyDate, shiftMonth } from "@/lib/format";
 import { otherProfile, profileLabel } from "@/lib/profiles";
 import type { Expense } from "@/lib/types";
@@ -165,26 +164,6 @@ export default function HomePage() {
         </motion.div>
       )}
 
-      {/* Savings card — duck relaxes on the coin stack when healthy */}
-      <section className="flex items-center gap-3 rounded-3xl border border-[#EDE9FE] glass p-4 shadow-sm">
-        <DuckMascot mood="relaxed" variant="rubber" size={64} title="Relaxed duck on coin stack" />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Savings pond</p>
-          <p className="tabular text-xl font-extrabold text-[#5B21B6]">{peso(savingsBalance)}</p>
-          <p className="text-[11px] text-[#6B5F8A]">Unspent money rolls here every month.</p>
-        </div>
-        <button
-          type="button"
-          onClick={openSavings}
-          className="min-h-[44px] rounded-full bg-[#DDD6FE] px-4 text-sm font-semibold text-[#5B21B6] active:scale-95"
-        >
-          Use
-        </button>
-      </section>
-
-      {/* Insights: donut, six-month bars, comparison */}
-      <InsightsPanel />
-
       {/* Category budgets */}
       <section aria-labelledby="cat-h" className="space-y-3">
         <div className="flex items-center justify-between">
@@ -252,7 +231,7 @@ export default function HomePage() {
           </div>
         ) : (
           <ul className="space-y-2">
-            {expenses.slice(0, 12).map((e) => (
+            {expenses.slice(0, 5).map((e) => (
               <ExpenseRow key={e.id} expense={e} categoryName={categories.find((c) => c.id === e.category_id)?.name ?? "—"} categoryIcon={categories.find((c) => c.id === e.category_id)?.icon ?? "circle"} onOpen={() => openExpense(e)} />
             ))}
           </ul>

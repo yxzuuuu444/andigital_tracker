@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Bell, Download, Lock, Plus, SlidersHorizontal, Trash2, Users } from "lucide-react";
 import { PickerField } from "@/components/PickerField";
+import { Fold } from "@/components/Fold";
 import { ImportSection, NotificationsSection, PinSection, RecurringSection, ThemeSection } from "@/components/SettingsExtras";
 import { DuckMascot } from "@/components/DuckMascot";
 import { useTracker } from "@/lib/tracker-context";
@@ -76,8 +77,7 @@ export default function SettingsPage() {
       </header>
 
       {/* Allowance */}
-      <section className="space-y-3 rounded-3xl border border-[#EDE9FE] glass p-4 shadow-sm">
-        <h2 className="text-sm font-bold text-[#2E1065]">Allowance · {monthLabel(selectedMonth)}</h2>
+      <Fold title={<span className="flex items-center gap-2">Allowance · {monthLabel(selectedMonth)}</span>}>
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Starting amount</span>
           <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#EDE9FE] bg-white/40 px-3 focus-within:border-[#8B5CF6]">
@@ -141,7 +141,7 @@ export default function SettingsPage() {
             ))}
           </ul>
         )}
-      </section>
+      </Fold>
 
       {/* Categories */}
       <CategoriesSection />
@@ -152,8 +152,7 @@ export default function SettingsPage() {
       <RecurringSection />
 
       {/* Data & account */}
-      <section className="space-y-3 rounded-3xl border border-[#EDE9FE] glass p-4 shadow-sm">
-        <h2 className="text-sm font-bold text-[#2E1065]">Data & account</h2>
+      <Fold title={<span className="flex items-center gap-2">Data & account</span>}>
         <button type="button" onClick={exportCsv} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl border border-[#DDD6FE] font-semibold text-[#5B21B6] active:bg-[#F5F3FF]">
           <Download size={18} /> Export all expenses (CSV)
         </button>
@@ -161,7 +160,7 @@ export default function SettingsPage() {
         <button type="button" onClick={switchProfile} className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-[#2E1065] font-semibold text-white active:scale-[0.98]">
           <Users size={18} /> Switch to {profileLabel(otherProfile(activeProfile))}
         </button>
-      </section>
+      </Fold>
     </div>
   );
 }
@@ -192,8 +191,7 @@ function CategoriesSection() {
   };
 
   return (
-    <section id="categories" className="space-y-3 rounded-3xl border border-[#EDE9FE] glass p-4 shadow-sm">
-      <h2 className="text-sm font-bold text-[#2E1065]">Categories & limits</h2>
+    <Fold title={<span className="flex items-center gap-2">Categories & limits</span>}>
       <p className="text-xs text-[#6B5F8A]">
         <strong>Warn only</strong> shows an amber/rose banner and still saves. <strong>Hard block</strong> stops saving over the limit unless you confirm an override.
       </p>
@@ -234,7 +232,7 @@ function CategoriesSection() {
           <Plus size={18} />
         </button>
       </form>
-    </section>
+    </Fold>
   );
 }
 

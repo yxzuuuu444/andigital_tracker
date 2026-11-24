@@ -9,10 +9,11 @@ import { useTracker } from "@/lib/tracker-context";
 import { getSupabase } from "@/lib/supabase/client";
 import { categoryIcon } from "@/lib/icons";
 import { PickerField } from "@/components/PickerField";
+import { InsightsPanel } from "@/components/InsightsPanel";
 import { cents, monthKey, monthLabel, monthRange, peso, prettyDate, shortMonthLabel, shiftMonth } from "@/lib/format";
 import { PAYMENT_METHODS, type Expense } from "@/lib/types";
 
-type Tab = "expenses" | "savings";
+type Tab = "expenses" | "savings" | "insights";
 
 export default function HistoryPage() {
   const [tab, setTab] = useState<Tab>("expenses");
@@ -23,10 +24,11 @@ export default function HistoryPage() {
         <h1 className="text-xl font-extrabold text-[#2E1065]">History</h1>
       </header>
 
-      <div role="tablist" aria-label="History sections" className="grid grid-cols-2 rounded-2xl bg-[#EDE9FE] p-1">
+      <div role="tablist" aria-label="History sections" className="grid grid-cols-3 rounded-2xl bg-[#EDE9FE] p-1">
         {([
           ["expenses", "Expenses Log"],
-          ["savings", "Savings Pond"],
+          ["savings", "Savings"],
+          ["insights", "Insights"],
         ] as const).map(([key, label]) => (
           <button
             key={key}
@@ -43,7 +45,9 @@ export default function HistoryPage() {
         ))}
       </div>
 
-      {tab === "expenses" ? <ExpensesLog /> : <SavingsPond />}
+      {tab === "expenses" && <ExpensesLog />}
+      {tab === "savings" && <SavingsPond />}
+      {tab === "insights" && <InsightsPanel />}
     </div>
   );
 }

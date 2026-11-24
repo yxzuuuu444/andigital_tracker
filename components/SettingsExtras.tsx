@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Moon, Repeat, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
 import { PickerField } from "@/components/PickerField";
+import { Fold } from "@/components/Fold";
 import { useTracker } from "@/lib/tracker-context";
 import { getSupabase } from "@/lib/supabase/client";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
@@ -42,8 +43,7 @@ export function RecurringSection() {
   };
 
   return (
-    <section id="recurring" className={card}>
-      <h2 className="flex items-center gap-2 text-sm font-bold text-[#2E1065]"><Repeat size={16} /> Recurring expenses</h2>
+    <Fold title={<span className="flex items-center gap-2"><Repeat size={16} /> Recurring expenses</span>}>
       <p className="text-xs text-[#6B5F8A]">Bills and subscriptions are logged automatically on their day each month. Days 1–28 only.</p>
 
       {recurring.map((r) => {
@@ -77,7 +77,7 @@ export function RecurringSection() {
         </div>
         <button type="button" onClick={save} className="col-span-5 min-h-[44px] rounded-xl bg-[#8B5CF6] font-semibold text-white active:scale-[0.98]">Add recurring expense</button>
       </div>
-    </section>
+    </Fold>
   );
 }
 
@@ -112,8 +112,7 @@ export function PinSection() {
   };
 
   return (
-    <section className={card}>
-      <h2 className="flex items-center gap-2 text-sm font-bold text-[#2E1065]"><ShieldCheck size={16} /> PIN lock · {profileLabel(activeProfile)}</h2>
+    <Fold title={<span className="flex items-center gap-2"><ShieldCheck size={16} /> PIN lock · {profileLabel(activeProfile)}</span>}>
       <p className="text-xs text-[#6B5F8A]">Keeps this profile hidden on a shared device. It is not real security: anyone with the link can still reach the data.</p>
       {enabled ? (
         <div className="space-y-2">
@@ -129,7 +128,7 @@ export function PinSection() {
           <button type="button" onClick={enable} className="min-h-[44px] shrink-0 rounded-xl bg-[#8B5CF6] px-4 text-sm font-semibold text-white">Set PIN</button>
         </div>
       )}
-    </section>
+    </Fold>
   );
 }
 
@@ -145,8 +144,7 @@ export function NotificationsSection() {
   };
 
   return (
-    <section className={card}>
-      <h2 className="flex items-center gap-2 text-sm font-bold text-[#2E1065]">{granted ? <Bell size={16} /> : <BellOff size={16} />} Budget alerts</h2>
+    <Fold title={<span className="flex items-center gap-2">{granted ? <Bell size={16} /> : <BellOff size={16} />} Budget alerts</span>}>
       {!supported ? (
         <p className="text-xs text-[#6B5F8A]">This browser doesn&apos;t support notifications.</p>
       ) : granted ? (
@@ -157,7 +155,7 @@ export function NotificationsSection() {
           <button type="button" onClick={enable} className="min-h-[44px] w-full rounded-xl bg-[#8B5CF6] text-sm font-semibold text-white active:scale-[0.98]">Turn on alerts</button>
         </>
       )}
-    </section>
+    </Fold>
   );
 }
 
@@ -178,13 +176,12 @@ export function ThemeSection() {
   };
 
   return (
-    <section className={card}>
-      <h2 className="flex items-center gap-2 text-sm font-bold text-[#2E1065]">{dark ? <Moon size={16} /> : <Sun size={16} />} Appearance</h2>
+    <Fold title={<span className="flex items-center gap-2">{dark ? <Moon size={16} /> : <Sun size={16} />} Appearance</span>}>
       <button type="button" onClick={toggle} className="flex min-h-[44px] w-full items-center justify-between rounded-xl glass px-4 text-sm font-semibold text-[#2E1065]">
         {dark ? "Dark mode" : "Light mode"}
         <span className="text-xs text-[#6B5F8A]">Tap to switch</span>
       </button>
-    </section>
+    </Fold>
   );
 }
 
@@ -248,15 +245,14 @@ export function ImportSection() {
   };
 
   return (
-    <section className={card}>
-      <h2 className="flex items-center gap-2 text-sm font-bold text-[#2E1065]"><Upload size={16} /> Import expenses (CSV)</h2>
+    <Fold title={<span className="flex items-center gap-2"><Upload size={16} /> Import expenses (CSV)</span>}>
       <p className="text-xs text-[#6B5F8A]">Use the same columns as the export: date (YYYY-MM-DD), category, amount_php, payment_method, note.</p>
       <label className="flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-xl glass text-sm font-semibold text-[#5B21B6] active:scale-[0.98]">
         {busy ? "Importing…" : "Choose CSV file"}
         <input type="file" accept=".csv,text/csv" className="sr-only" disabled={busy} onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])} />
       </label>
       {report && <p className="text-xs text-emerald-700">{report}</p>}
-    </section>
+    </Fold>
   );
 }
 

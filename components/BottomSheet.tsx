@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -13,6 +14,10 @@ type Props = {
 
 /** Slide-up drawer rendered inside the 448px app column so it matches the phone frame. */
 export function BottomSheet({ open, onClose, title, children }: Props) {
+  // Portal to <body>: glass parents use backdrop-filter, which would otherwise
+  // trap this fixed sheet inside them and break its position and scrolling.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -25,7 +30,9 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
     };
   }, [open, onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 mx-auto flex max-w-md items-end">
@@ -71,6 +78,7 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
           </motion.section>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
