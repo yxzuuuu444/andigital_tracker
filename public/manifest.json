@@ -1,0 +1,15 @@
+{
+  "name": "Andigital Tracker",
+  "short_name": "Andigital",
+  "description": "Personal expense and monthly allowance tracker.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF8FF",
+  "theme_color": "#8B5CF6",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
