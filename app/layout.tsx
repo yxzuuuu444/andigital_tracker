@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { TrackerProvider } from "@/lib/tracker-context";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
+import { ThemeInit } from "@/components/ThemeInit";
 
 export const metadata: Metadata = {
   title: "Andigital Tracker",
@@ -29,9 +30,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="bg-[#FAF8FF] text-[#2E1065] antialiased">
+      <body className="bg-transparent text-[#2E1065] antialiased">
+        <div className="app-backdrop" aria-hidden />
         <TrackerProvider>{children}</TrackerProvider>
         <ServiceWorkerRegister />
+        <ThemeInit />
       </body>
     </html>
   );

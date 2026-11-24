@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
@@ -8,6 +8,8 @@ import { AddExpenseSheet } from "@/components/AddExpenseSheet";
 import { SavingsSheet } from "@/components/SavingsSheet";
 import { DuckMascot } from "@/components/DuckMascot";
 import { useTracker } from "@/lib/tracker-context";
+import { PinLock } from "@/components/PinLock";
+import { hasPin, isUnlocked } from "@/lib/pin";
 import type { Expense } from "@/lib/types";
 
 type SheetsState = {
@@ -25,7 +27,16 @@ export function useSheets() {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { toasts, ready, user } = useTracker();
+  const { toasts, ready, user, activeProfile } = useTracker();
+  const [lockTick, setLockTick] = useState(0);
+  // Settings fires "andigital-lock" after locking, so the keypad reappears immediately.
+  useEffect(() => {
+    const bump = () => setLockTick((t) => t + 1);
+    window.addEventListener("andigital-lock", bump);
+    return () => window.removeEventListener("andigital-lock", bump);
+  }, []);
+  void lockTick;
+  const locked = typeof window !== "undefined" && !!user && hasPin(activeProfile) && !isUnlocked(activeProfile);
   const pathname = usePathname();
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -50,7 +61,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <SheetsContext.Provider value={value}>
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-[#FAF8FF] shadow-xl">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-white/40 shadow-xl">
         {/* Safe-area aware content area; bottom padding clears the nav bar */}
         <main
           className="flex-1 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-[env(safe-area-inset-top)]"
@@ -60,6 +71,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         {user && <BottomNav pathname={pathname} onAdd={() => openExpense(null)} />}
+
+        {locked && <PinLock profile={activeProfile} onUnlock={() => setLockTick((t) => t + 1)} />}
 
         {/* Toasts */}
         <div className="pointer-events-none fixed inset-x-0 top-[calc(env(safe-area-inset-top)+0.75rem)] z-[60] mx-auto flex max-w-md flex-col items-center gap-2 px-4">
@@ -107,7 +120,7 @@ function LoggedFlash() {
       className="pointer-events-none fixed left-1/2 top-[30%] z-[70] -translate-x-1/2"
     >
       <motion.div
-        className="rounded-3xl bg-white/90 p-3 shadow-xl ring-1 ring-[#EDE9FE]"
+        className="rounded-3xl glass-strong p-3 shadow-xl ring-1 ring-[#EDE9FE]"
       >
         <DuckMascot mood="logged" size={96} title="Expense saved" />
         <p className="mt-1 text-center text-sm font-semibold text-[#7C3AED]">Saved! 🪙</p>

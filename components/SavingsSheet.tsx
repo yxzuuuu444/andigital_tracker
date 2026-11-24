@@ -1,5 +1,8 @@
 "use client";
 
+import { PickerField } from "@/components/PickerField";
+import { categoryIcon } from "@/lib/icons";
+
 import { useEffect, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { useTracker } from "@/lib/tracker-context";
@@ -70,7 +73,7 @@ export function SavingsSheet({ open, onClose }: Props) {
               onClick={() => setMode(m)}
               aria-pressed={mode === m}
               className={`min-h-[44px] rounded-xl text-sm font-semibold transition ${
-                mode === m ? "bg-white text-[#7C3AED] shadow-sm" : "text-[#6B5F8A]"
+                mode === m ? "glass text-[#7C3AED] shadow-sm" : "text-[#6B5F8A]"
               }`}
             >
               {m === "withdraw" ? "Withdraw" : "Deposit"}
@@ -80,7 +83,7 @@ export function SavingsSheet({ open, onClose }: Props) {
 
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Amount</span>
-          <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#EDE9FE] bg-[#FAF8FF] px-4 focus-within:border-[#8B5CF6]">
+          <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#EDE9FE] bg-white/40 px-4 focus-within:border-[#8B5CF6]">
             <span className="text-2xl font-bold text-[#8B5CF6]">₱</span>
             <input
               inputMode="decimal"
@@ -104,7 +107,7 @@ export function SavingsSheet({ open, onClose }: Props) {
             maxLength={200}
             placeholder={mode === "withdraw" ? "What was it for?" : "Where did it come from?"}
             onChange={(e) => setNote(e.target.value)}
-            className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] bg-white px-3 outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-violet-200"
+            className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] glass px-3 outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-violet-200"
           />
         </label>
 
@@ -125,7 +128,7 @@ export function SavingsSheet({ open, onClose }: Props) {
                     className={`min-h-[60px] rounded-2xl border p-3 text-left transition ${
                       destination === opt.v
                         ? "border-[#8B5CF6] bg-[#F5F3FF] ring-2 ring-[#8B5CF6]/30"
-                        : "border-[#EDE9FE] bg-white"
+                        : "border-[#EDE9FE] glass"
                     }`}
                   >
                     <span className="block text-sm font-semibold text-[#2E1065]">{opt.t}</span>
@@ -139,31 +142,25 @@ export function SavingsSheet({ open, onClose }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Category</span>
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] bg-white px-2 outline-none focus:border-[#8B5CF6]"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mt-1">
+                    <PickerField
+                      title="Category"
+                      value={categoryId}
+                      onChange={(v) => setCategoryId(v)}
+                      options={categories.map((c) => ({ value: c.id, label: c.name, Icon: categoryIcon(c.icon) }))}
+                    />
+                  </div>
                 </label>
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Payment</span>
-                  <select
-                    value={payment}
-                    onChange={(e) => setPayment(e.target.value as PaymentMethod)}
-                    className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] bg-white px-2 outline-none focus:border-[#8B5CF6]"
-                  >
-                    {PAYMENT_METHODS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="mt-1">
+                    <PickerField
+                      title="Payment method"
+                      value={payment}
+                      onChange={(v) => setPayment(v)}
+                      options={PAYMENT_METHODS.map((p) => ({ value: p, label: p }))}
+                    />
+                  </div>
                 </label>
               </div>
             )}

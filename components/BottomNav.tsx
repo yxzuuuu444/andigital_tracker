@@ -38,7 +38,7 @@ export function BottomNav({ pathname, onAdd }: Props) {
       aria-label="Primary"
       className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-md px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
     >
-      <div className="relative flex items-center justify-between rounded-3xl border border-[#EDE9FE] bg-white/95 px-3 py-2 shadow-[0_-4px_24px_rgba(139,92,246,0.12)] backdrop-blur">
+      <div className="relative flex items-center justify-between rounded-3xl border border-[#EDE9FE] glass-strong px-3 py-2 shadow-[0_-4px_24px_rgba(139,92,246,0.12)] backdrop-blur">
         <div className="flex flex-1 justify-around">{tabs.map((t) => item(t.href, t.label, t.Icon))}</div>
 
         {/* Center floating + */}

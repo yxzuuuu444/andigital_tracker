@@ -4,3 +4,9 @@ out
 .env*.local
 *.tsbuildinfo
 next-env.d.ts
+
+# Vercel CLI local link
+.vercel
+
+.vercel
+.env*

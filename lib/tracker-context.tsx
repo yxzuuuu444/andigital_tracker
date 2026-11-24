@@ -13,6 +13,8 @@ import {
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase/client";
 import type {
+  RecurringExpense,
+  SavingsGoal,
   AllowanceEntry,
   AllowanceKind,
   Category,
@@ -55,7 +57,15 @@ type TrackerState = {
     note: string;
     spent_on: string;
     over_budget_override: boolean;
-  }) => Promise<boolean>;
+  }) => Promise<string | false>; // returns the new expense id (or a temp id when saved offline)
+  recurring: RecurringExpense[];
+  goals: SavingsGoal[];
+  pendingCount: number;
+  addRecurring: (input: Omit<RecurringExpense, "id" | "user_id" | "active" | "last_generated_month">) => Promise<boolean>;
+  toggleRecurring: (id: string, active: boolean) => Promise<boolean>;
+  deleteRecurring: (id: string) => Promise<boolean>;
+  addGoal: (name: string, target: number) => Promise<boolean>;
+  deleteGoal: (id: string) => Promise<boolean>;
   updateExpense: (id: string, patch: Partial<Expense>) => Promise<boolean>;
   deleteExpense: (id: string) => Promise<boolean>;
   setBaseAllowance: (amount: number) => Promise<boolean>;
@@ -78,6 +88,37 @@ type TrackerState = {
 
 const TrackerContext = createContext<TrackerState | null>(null);
 
+type QueuedExpense = {
+  tempId: string;
+  payload: {
+    category_id: string;
+    amount: number;
+    payment_method: PaymentMethod;
+    note: string;
+    spent_on: string;
+    over_budget_override: boolean;
+  };
+};
+
+const queueKey = (uid: string) => `andigital.queue.${uid}`;
+
+function readQueue(uid: string): QueuedExpense[] {
+  try {
+    return JSON.parse(window.localStorage.getItem(queueKey(uid)) || "[]") as QueuedExpense[];
+  } catch {
+    return [];
+  }
+}
+
+function writeQueue(uid: string, items: QueuedExpense[]) {
+  try {
+    if (items.length) window.localStorage.setItem(queueKey(uid), JSON.stringify(items));
+    else window.localStorage.removeItem(queueKey(uid));
+  } catch {
+    /* storage full or blocked: the expense stays visible but may not sync */
+  }
+}
+
 function errMsg(e: unknown) {
   if (e && typeof e === "object" && "message" in e) return String((e as { message: unknown }).message);
   return "Something went wrong.";
@@ -93,6 +134,9 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
   const [allowances, setAllowances] = useState<AllowanceEntry[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [savings, setSavings] = useState<SavingsTx[]>([]);
+  const [recurring, setRecurring] = useState<RecurringExpense[]>([]);
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastId = useRef(0);
 
@@ -132,15 +176,21 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
   const loadStatic = useCallback(async () => {
     const uid = uidRef.current;
     const sb = getSupabase();
-    const [cats, sav] = await Promise.all([
+    const [cats, sav, rec, gls] = await Promise.all([
       sb.from("categories").select("*").order("sort_order"),
       sb.from("savings_transactions").select("*").order("created_at", { ascending: false }),
+      sb.from("recurring_expenses").select("*").order("created_at"),
+      sb.from("savings_goals").select("*").order("created_at"),
     ]);
     if (cats.error) throw cats.error;
     if (sav.error) throw sav.error;
+    if (rec.error) throw rec.error;
+    if (gls.error) throw gls.error;
     if (uidRef.current !== uid) return;
     setCategories((cats.data ?? []) as Category[]);
     setSavings((sav.data ?? []) as SavingsTx[]);
+    setRecurring((rec.data ?? []) as RecurringExpense[]);
+    setGoals((gls.data ?? []) as SavingsGoal[]);
   }, []);
 
   const refreshAll = useCallback(async () => {
@@ -159,6 +209,31 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     setSavings([]);
   }, []);
 
+  // ---- Offline queue: expenses logged without signal, synced when back online.
+  const selectedRef = useRef(selectedMonth);
+  selectedRef.current = selectedMonth;
+
+  const flushQueue = useCallback(async () => {
+    const uid = uidRef.current;
+    if (!uid || (typeof navigator !== "undefined" && !navigator.onLine)) return;
+    const queue = readQueue(uid);
+    if (queue.length === 0) return;
+    const sb = getSupabase();
+    const remaining: QueuedExpense[] = [];
+    let synced = 0;
+    for (const item of queue) {
+      const { error } = await sb.from("expenses").insert({ user_id: uid, ...item.payload });
+      if (error) remaining.push(item);
+      else synced++;
+    }
+    writeQueue(uid, remaining);
+    setPendingCount(remaining.length);
+    if (synced > 0) {
+      pushToast(`Synced ${synced} offline expense${synced > 1 ? "s" : ""}`);
+      if (uidRef.current === uid) await loadMonthData(selectedRef.current).catch(() => {});
+    }
+  }, [loadMonthData, pushToast]);
+
   /** Loads everything for one account. Repeat calls for the same account are no-ops. */
   const handleUser = useCallback(
     async (u: User | null) => {
@@ -175,22 +250,31 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
       }
       uidRef.current = u.id;
       clearData();
-      setUser(u);
+      setPendingCount(readQueue(u.id).length);
       try {
         // Closes any unclosed past month exactly once, crediting unspent to savings.
-        const { data: closed, error } = await getSupabase().rpc("run_month_rollovers", {
-          p_current_month: currentMonth,
-        });
+        const sb = getSupabase();
+        const { data: closed, error } = await sb.rpc("run_month_rollovers", { p_current_month: currentMonth });
         if (error) throw error;
         if (closed && closed > 0) pushToast(`Closed ${closed} past month${closed > 1 ? "s" : ""} into savings 🦆`);
+        // Logs recurring expenses that are due this month (no-op if none).
+        const { data: gen, error: genErr } = await sb.rpc("generate_recurring_expenses", {
+          p_current_month: currentMonth,
+          p_today: todayISO(),
+        });
+        if (genErr) throw genErr;
+        if (gen && gen > 0) pushToast(`Logged ${gen} recurring expense${gen > 1 ? "s" : ""} 🦆`);
         await loadStatic();
       } catch (e) {
         pushToast(errMsg(e), "error");
       } finally {
+        // Set the user last so the month-data effect loads after the steps above.
+        setUser(u);
         setReady(true);
       }
+      void flushQueue();
     },
-    [clearData, currentMonth, loadStatic, pushToast],
+    [clearData, currentMonth, flushQueue, loadStatic, pushToast],
   );
 
   /** Signs into a profile: restores its saved session, or creates a fresh anonymous account. */
@@ -284,42 +368,47 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
 
   // ---- Mutations -----------------------------------------------------------
   const addExpense: TrackerState["addExpense"] = async (input) => {
-    if (!user) return false;
-    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const optimistic: Expense = {
-      id: tempId,
-      user_id: user.id,
+    const uid = uidRef.current;
+    if (!uid) return false;
+    const payload = {
       category_id: input.category_id,
       amount: input.amount,
       payment_method: input.payment_method,
       note: input.note,
       spent_on: input.spent_on,
       over_budget_override: input.over_budget_override,
+    };
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimistic: Expense = {
+      ...payload,
+      id: tempId,
+      user_id: uid,
+      receipt_path: null,
       created_at: new Date().toISOString(),
     };
-    if (input.spent_on.slice(0, 7) === selectedMonth) {
+    if (input.spent_on.slice(0, 7) === selectedRef.current) {
       setExpenses((list) => [optimistic, ...list]);
     }
-    const { data, error } = await getSupabase()
-      .from("expenses")
-      .insert({
-        user_id: user.id,
-        category_id: input.category_id,
-        amount: input.amount,
-        payment_method: input.payment_method,
-        note: input.note,
-        spent_on: input.spent_on,
-        over_budget_override: input.over_budget_override,
-      })
-      .select()
-      .single();
-    if (error) {
-      setExpenses((list) => list.filter((e) => e.id !== tempId));
-      pushToast(errMsg(error), "error");
-      return false;
+
+    const offline = typeof navigator !== "undefined" && !navigator.onLine;
+    if (!offline) {
+      const { data, error } = await getSupabase().from("expenses").insert({ user_id: uid, ...payload }).select().single();
+      if (!error && data) {
+        setExpenses((list) => list.map((e) => (e.id === tempId ? (data as Expense) : e)));
+        return (data as Expense).id;
+      }
+      const msg = errMsg(error);
+      if (!/fetch|network|failed/i.test(msg)) {
+        setExpenses((list) => list.filter((e) => e.id !== tempId));
+        pushToast(msg, "error");
+        return false;
+      }
     }
-    setExpenses((list) => list.map((e) => (e.id === tempId ? (data as Expense) : e)));
-    return true;
+    // No connection: keep it on this device and sync when back online.
+    writeQueue(uid, [...readQueue(uid), { tempId, payload }]);
+    setPendingCount(readQueue(uid).length);
+    pushToast("Saved offline. It will sync when you're back online.", "warn");
+    return tempId;
   };
 
   const updateExpense: TrackerState["updateExpense"] = async (id, patch) => {
@@ -435,10 +524,12 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     const sb = getSupabase();
     // Move existing expenses first (category_id is RESTRICT on delete).
     const { error: moveErr } = await sb.from("expenses").update({ category_id: reassignTo }).eq("category_id", id);
-    if (moveErr) {
-      pushToast(errMsg(moveErr), "error");
+    const { error: moveRecErr } = await sb.from("recurring_expenses").update({ category_id: reassignTo }).eq("category_id", id);
+    if (moveErr || moveRecErr) {
+      pushToast(errMsg(moveErr ?? moveRecErr), "error");
       return false;
     }
+    setRecurring((list) => list.map((r) => (r.category_id === id ? { ...r, category_id: reassignTo } : r)));
     const { error } = await sb.from("categories").delete().eq("id", id);
     if (error) {
       pushToast(errMsg(error), "error");
@@ -520,6 +611,82 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     return true;
   };
 
+  const addRecurring: TrackerState["addRecurring"] = async (input) => {
+    if (!uidRef.current) return false;
+    const { data, error } = await getSupabase()
+      .from("recurring_expenses")
+      .insert({ ...input, user_id: uidRef.current })
+      .select()
+      .single();
+    if (error) {
+      pushToast(errMsg(error), "error");
+      return false;
+    }
+    setRecurring((list) => [...list, data as RecurringExpense]);
+    pushToast("Recurring expense added");
+    return true;
+  };
+
+  const toggleRecurring: TrackerState["toggleRecurring"] = async (id, active) => {
+    const prev = recurring;
+    setRecurring((list) => list.map((r) => (r.id === id ? { ...r, active } : r)));
+    const { error } = await getSupabase().from("recurring_expenses").update({ active }).eq("id", id);
+    if (error) {
+      setRecurring(prev);
+      pushToast(errMsg(error), "error");
+      return false;
+    }
+    return true;
+  };
+
+  const deleteRecurring: TrackerState["deleteRecurring"] = async (id) => {
+    const prev = recurring;
+    setRecurring((list) => list.filter((r) => r.id !== id));
+    const { error } = await getSupabase().from("recurring_expenses").delete().eq("id", id);
+    if (error) {
+      setRecurring(prev);
+      pushToast(errMsg(error), "error");
+      return false;
+    }
+    pushToast("Recurring expense removed");
+    return true;
+  };
+
+  const addGoal: TrackerState["addGoal"] = async (name, target) => {
+    if (!uidRef.current) return false;
+    const { data, error } = await getSupabase()
+      .from("savings_goals")
+      .insert({ user_id: uidRef.current, name: name.trim(), target })
+      .select()
+      .single();
+    if (error) {
+      pushToast(errMsg(error), "error");
+      return false;
+    }
+    setGoals((list) => [...list, data as SavingsGoal]);
+    pushToast("Goal added 🎯");
+    return true;
+  };
+
+  const deleteGoal: TrackerState["deleteGoal"] = async (id) => {
+    const prev = goals;
+    setGoals((list) => list.filter((g) => g.id !== id));
+    const { error } = await getSupabase().from("savings_goals").delete().eq("id", id);
+    if (error) {
+      setGoals(prev);
+      pushToast(errMsg(error), "error");
+      return false;
+    }
+    return true;
+  };
+
+  // Sync queued offline expenses when the connection comes back.
+  useEffect(() => {
+    const onOnline = () => void flushQueue();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [flushQueue]);
+
   const value: TrackerState = {
     user,
     ready,
@@ -547,6 +714,14 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     deleteSavingsTx,
     activeProfile,
     switchProfile,
+    recurring,
+    goals,
+    pendingCount,
+    addRecurring,
+    toggleRecurring,
+    deleteRecurring,
+    addGoal,
+    deleteGoal,
   };
 
   return <TrackerContext.Provider value={value}>{children}</TrackerContext.Provider>;

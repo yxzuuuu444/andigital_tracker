@@ -20,8 +20,12 @@ Other scripts: `npm run build`, `npm run start`, `npm run typecheck`.
 ## 2. Supabase checklist
 
 1. **Create a project** at https://supabase.com/dashboard (any region near you).
-2. **Run the schema:** Dashboard → **SQL Editor** → *New query* → paste the full contents of
-   `supabase/migrations/0001_andigital_tracker.sql` → **Run**. It is safe to re-run.
+2. **Run the schema, in order.** Dashboard → **SQL Editor** → *New query* → paste each file's
+   contents → **Run**:
+   1. `supabase/migrations/0001_andigital_tracker.sql` (tables, RLS, rollover)
+   2. `supabase/migrations/0002_remove_credit_card.sql` (payment methods)
+   3. `supabase/migrations/0003_features.sql` (recurring expenses, savings goals, receipt photos)
+   Each file is safe to re-run.
    This creates the tables, RLS policies, the new-user category seeder trigger, the month-end
    rollover function (`run_month_rollovers`) and the atomic savings withdrawal (`withdraw_savings`).
 3. **Enable anonymous sign-ins (required):** Dashboard → **Authentication → Sign In / Providers**
@@ -71,6 +75,21 @@ If these are missing, the app shows a setup notice on `/login` instead of crashi
   for backups.
 - Anyone who can open the site can switch profiles. Profiles are only separated from each other,
   not locked behind a password.
+
+## 4b. Features
+
+- **Glass design** with a light and dark mode (Settings → Appearance).
+- **Recurring expenses** (Settings): bills and subscriptions log themselves on their day, days 1–28.
+  Only the current month is generated when you open the app. Months you skip are not backfilled.
+- **Repeat chips** on the expense sheet: tap a recent expense to fill it in.
+- **Receipt photos** on an expense. Stored in a private Supabase Storage bucket named `receipts`.
+- **Insights** on Home: category donut, six-month bars, change vs last month, biggest spending day.
+- **Savings goals** in the Savings Pond. Progress is your total savings against the target.
+- **Offline logging**: expenses saved without signal wait on the phone and sync when back online.
+- **PIN lock** per profile (Settings). A privacy gate on a shared device, not real security.
+- **Budget alerts** as browser notifications while the app is open. Background push needs a server,
+  which this app doesn't have.
+- **CSV import** (Settings), using the same columns as the export.
 
 ## 5. Install as an app (PWA)
 

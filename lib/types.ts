@@ -1,4 +1,4 @@
-export const PAYMENT_METHODS = ["Cash", "GCash / E-Wallet", "Debit / Bank", "Credit Card"] as const;
+export const PAYMENT_METHODS = ["Cash", "GCash / E-Wallet", "Debit / Bank"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 
 export type LimitMode = "soft_warn" | "hard_block";
@@ -23,6 +23,7 @@ export type Expense = {
   note: string;
   spent_on: string; // YYYY-MM-DD
   over_budget_override: boolean;
+  receipt_path: string | null;
   created_at: string;
 };
 
@@ -46,4 +47,23 @@ export type SavingsTx = {
   note: string;
   source_month: string | null;
   created_at: string;
+};
+
+export type RecurringExpense = {
+  id: string;
+  user_id: string;
+  category_id: string;
+  amount: number;
+  payment_method: PaymentMethod;
+  note: string;
+  day_of_month: number;
+  active: boolean;
+  last_generated_month: string | null;
+};
+
+export type SavingsGoal = {
+  id: string;
+  user_id: string;
+  name: string;
+  target: number;
 };

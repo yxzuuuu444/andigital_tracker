@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Camera, Trash2, X } from "lucide-react";
 import { BottomSheet } from "@/components/BottomSheet";
 import { DuckMascot } from "@/components/DuckMascot";
 import { useTracker } from "@/lib/tracker-context";
 import { useSheets } from "@/components/AppShell";
 import { categoryIcon } from "@/lib/icons";
 import { previewExpense, spentByCategory } from "@/lib/budget";
+import { getSupabase } from "@/lib/supabase/client";
+import { notify } from "@/lib/notify";
 import { PAYMENT_METHODS, type Expense, type PaymentMethod } from "@/lib/types";
 import { cents, peso, todayISO } from "@/lib/format";
 
@@ -23,8 +25,31 @@ function parseAmount(raw: string) {
   return Number.isFinite(n) ? cents(n) : 0;
 }
 
+/** Shrinks a phone photo to a small JPEG so uploads stay fast on mobile data. */
+async function compressImage(file: File): Promise<Blob> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Could not read that photo"));
+      el.src = url;
+    });
+    const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not compress photo"))), "image/jpeg", 0.8),
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function AddExpenseSheet({ open, editing, onClose }: Props) {
-  const { categories, expenses, addExpense, updateExpense, deleteExpense, selectedMonth } = useTracker();
+  const { user, categories, expenses, addExpense, updateExpense, deleteExpense, selectedMonth, pushToast } = useTracker();
   const { notifyLogged } = useSheets();
 
   const [amountText, setAmountText] = useState("");
@@ -35,13 +60,16 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
   const [override, setOverride] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
-  // Reset form each time the sheet opens (or switches between add/edit).
+  // Reset the form each time the sheet opens (or switches between add and edit).
   useEffect(() => {
     if (!open) return;
     setConfirmDelete(false);
     setOverride(false);
     setSaving(false);
+    setReceipt(null);
     if (editing) {
       setAmountText(String(editing.amount));
       setCategoryId(editing.category_id);
@@ -57,6 +85,22 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing?.id]);
+
+  // Show the saved receipt when editing an expense that has one.
+  useEffect(() => {
+    setReceiptUrl(null);
+    if (!open || !editing?.receipt_path) return;
+    let cancelled = false;
+    getSupabase()
+      .storage.from("receipts")
+      .createSignedUrl(editing.receipt_path, 600)
+      .then(({ data }: { data: { signedUrl: string } | null }) => {
+        if (!cancelled && data) setReceiptUrl(data.signedUrl);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, editing?.receipt_path]);
 
   const amount = parseAmount(amountText);
   const category = categories.find((c) => c.id === categoryId);
@@ -79,6 +123,29 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
   const needsOverride = !!preview && preview.blocked;
   const canSave = amount > 0 && !!categoryId && date && (!needsOverride || override) && !saving;
 
+  // Quick repeat: the most recent distinct expenses this month.
+  const recent = useMemo(() => {
+    if (editing) return [];
+    const seen = new Set<string>();
+    const out: Expense[] = [];
+    for (const e of expenses) {
+      const key = `${e.category_id}|${e.amount}|${e.note}|${e.payment_method}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(e);
+      if (out.length === 5) break;
+    }
+    return out;
+  }, [expenses, editing]);
+
+  const applyRepeat = (e: Expense) => {
+    setCategoryId(e.category_id);
+    setAmountText(String(e.amount));
+    setPayment(e.payment_method);
+    setNote(e.note);
+    setOverride(false);
+  };
+
   const remainingLabel = (cat: (typeof categories)[number]) => {
     if (cat.monthly_limit == null) return "No cap";
     const left = cents(cat.monthly_limit - (spentMap.get(cat.id) ?? 0) + (editing?.category_id === cat.id ? Number(editing.amount) : 0));
@@ -96,12 +163,42 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
       spent_on: date,
       over_budget_override: needsOverride && override,
     };
-    const ok = editing
-      ? await updateExpense(editing.id, payload)
-      : await addExpense(payload);
+
+    let savedId: string | false;
+    if (editing) {
+      savedId = (await updateExpense(editing.id, payload)) ? editing.id : false;
+    } else {
+      savedId = await addExpense(payload);
+    }
+
+    // Attach a receipt photo (skipped for expenses still queued offline).
+    if (savedId && receipt && user && !savedId.startsWith("temp-")) {
+      try {
+        const small = await compressImage(receipt);
+        const path = `${user.id}/${savedId}-${Date.now()}.jpg`;
+        const { error } = await getSupabase()
+          .storage.from("receipts")
+          .upload(path, small, { contentType: "image/jpeg", upsert: true });
+        if (error) throw error;
+        await updateExpense(savedId, { receipt_path: path });
+      } catch (e) {
+        pushToast(`Saved, but the receipt didn't upload${e instanceof Error ? `: ${e.message}` : ""}`, "warn");
+      }
+    }
+
     setSaving(false);
-    if (ok) {
-      if (!editing) notifyLogged();
+    if (savedId) {
+      if (!editing) {
+        notifyLogged();
+        if (preview && preview.state !== "ok") {
+          notify(
+            preview.state === "over" ? "Over budget" : "Budget warning",
+            preview.state === "over"
+              ? `${category.name} is over by ${peso(preview.overBy)}`
+              : `${category.name} is at ${Math.round((preview.projected / (category.monthly_limit || 1)) * 100)}% of its limit`,
+          );
+        }
+      }
       onClose();
     }
   };
@@ -117,20 +214,41 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
   return (
     <BottomSheet open={open} onClose={onClose} title={editing ? "Edit expense" : "Log expense"}>
       <div className="space-y-5 pt-1">
+        {/* Quick repeat chips */}
+        {recent.length > 0 && (
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Repeat</span>
+            <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-1">
+              {recent.map((e) => {
+                const cat = categories.find((c) => c.id === e.category_id);
+                const Icon = categoryIcon(cat?.icon ?? "circle");
+                return (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => applyRepeat(e)}
+                    className="flex min-h-[44px] shrink-0 items-center gap-2 rounded-full glass px-3 text-xs font-semibold text-[#5B21B6] active:scale-95"
+                  >
+                    <Icon size={14} />
+                    {(e.note || cat?.name || "Expense").slice(0, 14)} · {peso(Number(e.amount))}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* 1. Amount */}
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Amount</span>
-          <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#EDE9FE] bg-[#FAF8FF] px-4 focus-within:border-[#8B5CF6] focus-within:ring-2 focus-within:ring-violet-200">
+          <div className="mt-1 flex items-center gap-2 rounded-2xl border border-white/60 glass px-4 focus-within:border-[#8B5CF6] focus-within:ring-2 focus-within:ring-violet-200">
             <span className="text-3xl font-bold text-[#8B5CF6]">₱</span>
             <input
               autoFocus={!editing}
               inputMode="decimal"
               placeholder="0"
               value={amountText}
-              onChange={(e) => {
-                const v = e.target.value.replace(/[^0-9.,]/g, "");
-                setAmountText(v);
-              }}
+              onChange={(e) => setAmountText(e.target.value.replace(/[^0-9.,]/g, ""))}
               className="tabular h-16 w-full bg-transparent text-4xl font-extrabold text-[#7C3AED] outline-none placeholder:text-[#DDD6FE]"
               aria-label="Amount in pesos"
             />
@@ -156,7 +274,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
                   className={`flex min-h-[52px] items-center gap-2 rounded-2xl border px-3 py-2 text-left transition ${
                     active
                       ? "border-[#8B5CF6] bg-[#8B5CF6] text-white shadow-md shadow-violet-200"
-                      : "border-[#EDE9FE] bg-[#F5F3FF] text-[#2E1065] active:bg-[#EDE9FE]"
+                      : "glass border-white/60 text-[#2E1065] active:bg-[#EDE9FE]"
                   }`}
                 >
                   <Icon size={18} className="shrink-0" />
@@ -182,10 +300,10 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
               exit={{ opacity: 0, height: 0 }}
               className={`overflow-hidden rounded-2xl border p-3 text-sm ${
                 preview.state === "over"
-                  ? "border-rose-200 bg-rose-50 text-rose-700"
+                  ? "border-rose-200 bg-rose-50/70 text-rose-700"
                   : preview.state === "warn"
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    ? "border-amber-200 bg-amber-50/70 text-amber-700"
+                    : "border-emerald-200 bg-emerald-50/70 text-emerald-700"
               }`}
             >
               <div className="flex items-center gap-3">
@@ -205,7 +323,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
               </div>
 
               {needsOverride && (
-                <div className="mt-3 rounded-xl bg-white/80 p-3 text-rose-700 ring-1 ring-rose-200">
+                <div className="mt-3 rounded-xl glass-strong p-3 text-rose-700">
                   <p className="flex items-center gap-1.5 text-sm font-bold">
                     <AlertTriangle size={16} /> Hard block: lower the amount or confirm override
                   </p>
@@ -237,7 +355,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
                 className={`min-h-[44px] rounded-full px-4 text-sm font-medium transition ${
                   payment === pm
                     ? "bg-[#DDD6FE] text-[#5B21B6] ring-2 ring-[#8B5CF6]"
-                    : "bg-[#F5F3FF] text-[#6B5F8A] active:bg-[#EDE9FE]"
+                    : "glass text-[#6B5F8A] active:bg-[#EDE9FE]"
                 }`}
               >
                 {pm}
@@ -256,7 +374,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
               maxLength={200}
               placeholder="Optional"
               onChange={(e) => setNote(e.target.value)}
-              className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] bg-white px-3 outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-violet-200"
+              className="mt-1 h-11 w-full rounded-xl border border-white/60 glass px-3 outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-violet-200"
             />
           </label>
           <label className="col-span-2 block">
@@ -265,9 +383,39 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value || todayISO())}
-              className="mt-1 h-11 w-full rounded-xl border border-[#EDE9FE] bg-white px-2 text-sm outline-none focus:border-[#8B5CF6]"
+              className="mt-1 h-11 w-full rounded-xl border border-white/60 glass px-2 text-sm outline-none focus:border-[#8B5CF6]"
             />
           </label>
+        </div>
+
+        {/* Receipt photo */}
+        <div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Receipt</span>
+          <div className="mt-2 flex items-center gap-3">
+            <label className="flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl glass px-3 text-sm font-medium text-[#5B21B6] active:scale-95">
+              <Camera size={16} />
+              {receipt ? "Change photo" : "Attach photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            {receipt && (
+              <>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-[#6B5F8A]">{receipt.name}</span>
+                <button type="button" onClick={() => setReceipt(null)} className="grid h-11 w-11 place-items-center rounded-xl text-[#6B5F8A]" aria-label="Remove photo">
+                  <X size={16} />
+                </button>
+              </>
+            )}
+            {!receipt && receiptUrl && (
+              <a href={receiptUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-[#7C3AED] underline">
+                View saved receipt
+              </a>
+            )}
+          </div>
         </div>
 
         {/* Actions */}
@@ -305,4 +453,3 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
     </BottomSheet>
   );
 }
-

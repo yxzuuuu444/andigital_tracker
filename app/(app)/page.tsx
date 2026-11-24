@@ -8,6 +8,7 @@ import { useSheets } from "@/components/AppShell";
 import { useTracker } from "@/lib/tracker-context";
 import { computeMonthStats } from "@/lib/month-stats";
 import { categoryIcon } from "@/lib/icons";
+import { InsightsPanel } from "@/components/InsightsPanel";
 import { monthLabel, peso, prettyDate, shiftMonth } from "@/lib/format";
 import { otherProfile, profileLabel } from "@/lib/profiles";
 import type { Expense } from "@/lib/types";
@@ -29,7 +30,7 @@ export default function HomePage() {
       {/* Header */}
       <header className="flex items-center justify-between pt-2">
         <div className="flex items-center gap-2.5">
-          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-white shadow-sm ring-1 ring-[#EDE9FE]">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl glass shadow-sm ring-1 ring-[#EDE9FE]">
             <DuckMascot mood="idle" size={34} />
           </div>
           <div>
@@ -42,7 +43,7 @@ export default function HomePage() {
             type="button"
             onClick={switchProfile}
             aria-label={`Switch to ${profileLabel(otherProfile(activeProfile))}`}
-            className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-white px-3 text-xs font-semibold text-[#7C3AED] shadow-sm ring-1 ring-[#EDE9FE] active:bg-[#F5F3FF]"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-full glass px-3 text-xs font-semibold text-[#7C3AED] shadow-sm ring-1 ring-[#EDE9FE] active:bg-[#F5F3FF]"
           >
             <Users size={16} />
             {profileLabel(activeProfile)}
@@ -58,7 +59,7 @@ export default function HomePage() {
       </header>
 
       {/* Month switcher */}
-      <div className="flex items-center justify-between rounded-2xl bg-white px-2 py-1 shadow-sm ring-1 ring-[#EDE9FE]">
+      <div className="flex items-center justify-between rounded-2xl glass px-2 py-1 shadow-sm ring-1 ring-[#EDE9FE]">
         <button
           type="button"
           aria-label="Previous month"
@@ -165,7 +166,7 @@ export default function HomePage() {
       )}
 
       {/* Savings card — duck relaxes on the coin stack when healthy */}
-      <section className="flex items-center gap-3 rounded-3xl border border-[#EDE9FE] bg-white p-4 shadow-sm">
+      <section className="flex items-center gap-3 rounded-3xl border border-[#EDE9FE] glass p-4 shadow-sm">
         <DuckMascot mood="relaxed" variant="rubber" size={64} title="Relaxed duck on coin stack" />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Savings pond</p>
@@ -181,6 +182,9 @@ export default function HomePage() {
         </button>
       </section>
 
+      {/* Insights: donut, six-month bars, comparison */}
+      <InsightsPanel />
+
       {/* Category budgets */}
       <section aria-labelledby="cat-h" className="space-y-3">
         <div className="flex items-center justify-between">
@@ -188,14 +192,14 @@ export default function HomePage() {
           <Link href="/settings#categories" className="text-xs font-semibold text-[#8B5CF6]">Manage</Link>
         </div>
         {categories.length === 0 ? (
-          <p className="rounded-2xl bg-white p-4 text-sm text-[#6B5F8A]">Loading categories…</p>
+          <p className="rounded-2xl glass p-4 text-sm text-[#6B5F8A]">Loading categories…</p>
         ) : (
           <div className="grid gap-3">
             {stats.byCategory.map(({ category, spent, limit, remaining, pct, state }) => {
               const Icon = categoryIcon(category.icon);
               const barC = state === "over" ? "bg-[#F43F5E]" : state === "warn" ? "bg-[#F59E0B]" : "bg-[#10B981]";
               return (
-                <div key={category.id} className="rounded-2xl border border-[#EDE9FE] bg-white p-4 shadow-sm">
+                <div key={category.id} className="rounded-2xl border border-[#EDE9FE] glass p-4 shadow-sm">
                   <div className="flex items-center gap-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F5F3FF] text-[#7C3AED]">
                       <Icon size={18} />
@@ -241,7 +245,7 @@ export default function HomePage() {
       <section aria-labelledby="recent-h" className="space-y-3">
         <h2 id="recent-h" className="text-sm font-bold text-[#2E1065]">Recent expenses</h2>
         {expenses.length === 0 ? (
-          <div className="flex flex-col items-center rounded-3xl border border-dashed border-[#DDD6FE] bg-white p-6 text-center">
+          <div className="flex flex-col items-center rounded-3xl border border-dashed border-[#DDD6FE] glass p-6 text-center">
             <DuckMascot mood={mood === "empty" ? "empty" : "idle"} size={96} />
             <p className="mt-2 text-sm font-semibold text-[#5B21B6]">No expenses yet—your duck is chilling!</p>
             <p className="text-xs text-[#6B5F8A]">Tap the + button to log your first one.</p>
@@ -278,7 +282,7 @@ function ExpenseRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-[#EDE9FE] bg-white px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99] active:bg-[#FAF8FF]"
+        className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-[#EDE9FE] glass px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99] active:bg-white/40"
       >
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F5F3FF] text-[#7C3AED]">
           <Icon size={18} />
