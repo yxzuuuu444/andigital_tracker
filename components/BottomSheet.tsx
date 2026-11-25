@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 
 type Props = {
@@ -17,6 +17,8 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
   // Portal to <body>: glass parents use backdrop-filter, which would otherwise
   // trap this fixed sheet inside them and break its position and scrolling.
   const [mounted, setMounted] = useState(false);
+  // Drag-to-dismiss starts only from the handle, so scrolling the content still works on phones.
+  const dragControls = useDragControls();
   useEffect(() => setMounted(true), []);
   useEffect(() => {
     if (!open) return;
@@ -54,13 +56,18 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 320 }}
             drag="y"
+            dragListener={false}
+            dragControls={dragControls}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.4 }}
             onDragEnd={(_, info) => {
               if (info.offset.y > 120) onClose();
             }}
           >
-            <div className="sticky top-0 z-10 rounded-t-[28px] glass-strong px-5 pb-2 pt-3">
+            <div
+              className="sticky top-0 z-10 cursor-grab touch-none rounded-t-[28px] glass-strong px-5 pb-2 pt-3"
+              onPointerDown={(e) => dragControls.start(e)}
+            >
               <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-[#DDD6FE]" />
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-[#2E1065]">{title}</h2>

@@ -14,7 +14,7 @@ import type { Expense } from "@/lib/types";
 
 type SheetsState = {
   openExpense: (editing?: Expense | null) => void;
-  openSavings: () => void;
+  openSavings: (mode?: "withdraw" | "deposit") => void;
   notifyLogged: () => void;
 };
 
@@ -47,7 +47,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     setEditing(e ?? null);
     setExpenseOpen(true);
   }, []);
-  const openSavings = useCallback(() => setSavingsOpen(true), []);
+  const [savingsMode, setSavingsMode] = useState<"withdraw" | "deposit">("withdraw");
+  const openSavings = useCallback((mode?: "withdraw" | "deposit") => {
+    setSavingsMode(mode === "deposit" ? "deposit" : "withdraw"); // ignores click events
+    setSavingsOpen(true);
+  }, []);
   const notifyLogged = useCallback(() => {
     const key = Date.now();
     setLoggedKey(key);
@@ -104,7 +108,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </AnimatePresence>
 
         <AddExpenseSheet open={expenseOpen} editing={editing} onClose={() => setExpenseOpen(false)} />
-        <SavingsSheet open={savingsOpen} onClose={() => setSavingsOpen(false)} />
+        <SavingsSheet open={savingsOpen} onClose={() => setSavingsOpen(false)} initialMode={savingsMode} />
       </div>
     </SheetsContext.Provider>
   );

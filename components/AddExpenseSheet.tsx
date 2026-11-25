@@ -49,7 +49,7 @@ async function compressImage(file: File): Promise<Blob> {
 }
 
 export function AddExpenseSheet({ open, editing, onClose }: Props) {
-  const { user, categories, expenses, addExpense, updateExpense, deleteExpense, selectedMonth, pushToast } = useTracker();
+  const { user, categories, expenses, addExpense, updateExpense, deleteExpense, addSavingsDeposit, selectedMonth, pushToast } = useTracker();
   const { notifyLogged } = useSheets();
 
   const [amountText, setAmountText] = useState("");
@@ -62,6 +62,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [receipt, setReceipt] = useState<File | null>(null);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [kind, setKind] = useState<"expense" | "savings">("expense");
 
   // Reset the form each time the sheet opens (or switches between add and edit).
   useEffect(() => {
@@ -70,6 +71,7 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
     setOverride(false);
     setSaving(false);
     setReceipt(null);
+    setKind("expense");
     if (editing) {
       setAmountText(String(editing.amount));
       setCategoryId(editing.category_id);
@@ -152,6 +154,17 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
     return left >= 0 ? `${peso(left)} left` : `${peso(-left)} over`;
   };
 
+  const savingsOK = amount > 0 && !saving;
+
+  // Adds money straight into savings (no category or budget involved).
+  const submitSavings = async () => {
+    if (!savingsOK) return;
+    setSaving(true);
+    const ok = await addSavingsDeposit(amount, note.trim());
+    setSaving(false);
+    if (ok) onClose();
+  };
+
   const submit = async () => {
     if (!canSave || !category) return;
     setSaving(true);
@@ -211,9 +224,60 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
     if (ok) onClose();
   };
 
+  if (kind === "savings" && !editing) {
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Add to savings">
+        <div className="space-y-5 pt-1">
+          <KindToggle kind={kind} onChange={setKind} />
+
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Amount</span>
+            <div className="mt-1 flex items-center gap-2 rounded-2xl border border-white/60 glass px-4 focus-within:border-[#8B5CF6] focus-within:ring-2 focus-within:ring-violet-200">
+              <span className="text-3xl font-bold text-[#8B5CF6]">₱</span>
+              <input
+                autoFocus
+                inputMode="decimal"
+                placeholder="0"
+                value={amountText}
+                onChange={(e) => setAmountText(e.target.value.replace(/[^0-9.,]/g, ""))}
+                className="tabular h-16 w-full bg-transparent text-4xl font-extrabold text-[#7C3AED] outline-none placeholder:text-[#DDD6FE]"
+                aria-label="Amount to save"
+              />
+            </div>
+          </label>
+
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Note</span>
+            <input
+              type="text"
+              value={note}
+              maxLength={200}
+              placeholder="e.g. Leftover from the week"
+              onChange={(e) => setNote(e.target.value)}
+              className="mt-1 h-11 w-full rounded-xl border border-white/60 glass px-3 outline-none focus:border-[#8B5CF6] focus:ring-2 focus:ring-violet-200"
+            />
+          </label>
+
+          <div className="sticky bottom-0 rounded-2xl glass-strong p-2">
+            <button
+              type="button"
+              onClick={submitSavings}
+              disabled={!savingsOK}
+              className="min-h-[52px] w-full rounded-2xl bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-4 font-semibold text-white shadow-lg shadow-violet-300/50 transition active:scale-[0.98] disabled:opacity-40"
+            >
+              {saving ? "Saving…" : "Add to savings"}
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
+    );
+  }
+
   return (
     <BottomSheet open={open} onClose={onClose} title={editing ? "Edit expense" : "Log expense"}>
       <div className="space-y-5 pt-1">
+        {!editing && <KindToggle kind={kind} onChange={setKind} />}
+
         {/* Quick repeat chips */}
         {recent.length > 0 && (
           <div>
@@ -418,8 +482,8 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3 pt-1">
+        {/* Actions (sticky so the save button stays reachable while scrolling) */}
+        <div className="sticky bottom-0 flex items-center gap-3 rounded-2xl glass-strong p-2">
           {editing &&
             (confirmDelete ? (
               <button
@@ -451,5 +515,32 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
         </div>
       </div>
     </BottomSheet>
+  );
+}
+
+/** "Expense" vs "Add to savings" switch shown at the top of the sheet. */
+function KindToggle({ kind, onChange }: { kind: "expense" | "savings"; onChange: (k: "expense" | "savings") => void }) {
+  return (
+    <div role="tablist" aria-label="What are you logging?" className="grid grid-cols-2 gap-1 rounded-2xl bg-white/40 p-1">
+      {(
+        [
+          ["expense", "Expense"],
+          ["savings", "Add to savings"],
+        ] as const
+      ).map(([k, label]) => (
+        <button
+          key={k}
+          role="tab"
+          aria-selected={kind === k}
+          type="button"
+          onClick={() => onChange(k)}
+          className={`min-h-[44px] rounded-xl text-sm font-semibold transition ${
+            kind === k ? "glass-strong text-[#7C3AED]" : "text-[#6B5F8A]"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Trash2, Wallet } from "lucide-react";
+import { Plus, Search, Trash2, Wallet } from "lucide-react";
 import { DuckMascot } from "@/components/DuckMascot";
 import { useSheets } from "@/components/AppShell";
 import { useTracker } from "@/lib/tracker-context";
@@ -203,13 +203,22 @@ function SavingsPond() {
         </motion.div>
         <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Total saved</p>
         <p className="tabular text-4xl font-extrabold text-[#4C1D95]">{peso(savingsBalance)}</p>
-        <button
-          type="button"
-          onClick={openSavings}
-          className="mt-4 inline-flex min-h-[48px] items-center gap-2 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-6 text-sm font-semibold text-white shadow-lg shadow-violet-300/50 active:scale-95"
-        >
-          <Wallet size={16} /> Withdraw from Savings
-        </button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => openSavings("deposit")}
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full glass text-sm font-semibold text-[#5B21B6] active:scale-95"
+          >
+            <Plus size={16} /> Add money
+          </button>
+          <button
+            type="button"
+            onClick={() => openSavings("withdraw")}
+            className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] text-sm font-semibold text-white shadow-lg shadow-violet-300/50 active:scale-95"
+          >
+            <Wallet size={16} /> Withdraw
+          </button>
+        </div>
       </section>
 
       <GoalsSection />

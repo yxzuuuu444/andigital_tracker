@@ -9,11 +9,11 @@ import { useTracker } from "@/lib/tracker-context";
 import { cents, peso } from "@/lib/format";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
 
-type Props = { open: boolean; onClose: () => void };
+type Props = { open: boolean; onClose: () => void; initialMode?: Mode };
 type Mode = "withdraw" | "deposit";
 type Destination = "expense" | "allowance";
 
-export function SavingsSheet({ open, onClose }: Props) {
+export function SavingsSheet({ open, onClose, initialMode = "withdraw" }: Props) {
   const { savingsBalance, categories, withdrawSavings, addSavingsDeposit } = useTracker();
   const [mode, setMode] = useState<Mode>("withdraw");
   const [amountText, setAmountText] = useState("");
@@ -28,7 +28,7 @@ export function SavingsSheet({ open, onClose }: Props) {
     setAmountText("");
     setNote("");
     setSaving(false);
-    setMode("withdraw");
+    setMode(initialMode);
     setDestination("expense");
     setCategoryId((prev) => (categories.some((c) => c.id === prev) ? prev : categories[0]?.id ?? ""));
     // eslint-disable-next-line react-hooks/exhaustive-deps

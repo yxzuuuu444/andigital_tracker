@@ -123,7 +123,7 @@ export default function HomePage() {
           </div>
           <button
             type="button"
-            onClick={openSavings}
+            onClick={() => openSavings()}
             aria-label={`Savings ${peso(savingsBalance)}, open savings`}
             className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3 text-sm font-bold ring-1 ring-white/30 backdrop-blur active:bg-white/30"
           >
