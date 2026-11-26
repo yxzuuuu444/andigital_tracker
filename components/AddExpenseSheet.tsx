@@ -226,7 +226,23 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
 
   if (kind === "savings" && !editing) {
     return (
-      <BottomSheet open={open} onClose={onClose} title="Add to savings">
+      <BottomSheet
+        open={open}
+        onClose={onClose}
+        title="Add to savings"
+        footer={
+          <div>
+            <button
+              type="button"
+              onClick={submitSavings}
+              disabled={!savingsOK}
+              className="min-h-[52px] w-full rounded-2xl bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-4 font-semibold text-white shadow-lg shadow-violet-300/50 transition active:scale-[0.98] disabled:opacity-40"
+            >
+              {saving ? "Saving…" : "Add to savings"}
+            </button>
+          </div>
+        }
+      >
         <div className="space-y-5 pt-1">
           <KindToggle kind={kind} onChange={setKind} />
 
@@ -258,23 +274,47 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
             />
           </label>
 
-          <div className="sticky bottom-0 rounded-2xl glass-strong p-2">
-            <button
-              type="button"
-              onClick={submitSavings}
-              disabled={!savingsOK}
-              className="min-h-[52px] w-full rounded-2xl bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-4 font-semibold text-white shadow-lg shadow-violet-300/50 transition active:scale-[0.98] disabled:opacity-40"
-            >
-              {saving ? "Saving…" : "Add to savings"}
-            </button>
-          </div>
         </div>
       </BottomSheet>
     );
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={editing ? "Edit expense" : "Log expense"}>
+    <BottomSheet
+      open={open}
+      onClose={onClose}
+      title={editing ? "Edit expense" : "Log expense"}
+      footer={<div className="flex items-center gap-3">
+        {editing &&
+          (confirmDelete ? (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={saving}
+              className="min-h-[52px] flex-1 rounded-2xl bg-rose-500 px-4 font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+            >
+              Tap again to delete
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label="Delete expense"
+              className="grid h-[52px] w-[52px] place-items-center rounded-2xl border border-rose-200 text-rose-500 active:bg-rose-50"
+            >
+              <Trash2 size={20} />
+            </button>
+          ))}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!canSave}
+          className="min-h-[52px] flex-1 rounded-2xl bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-4 font-semibold text-white shadow-lg shadow-violet-300/50 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        >
+          {saving ? "Saving…" : editing ? "Save changes" : "Log expense"}
+        </button>
+      </div>}
+    >
       <div className="space-y-5 pt-1">
         {!editing && <KindToggle kind={kind} onChange={setKind} />}
 
@@ -482,37 +522,6 @@ export function AddExpenseSheet({ open, editing, onClose }: Props) {
           </div>
         </div>
 
-        {/* Actions (sticky so the save button stays reachable while scrolling) */}
-        <div className="sticky bottom-0 flex items-center gap-3 rounded-2xl glass-strong p-2">
-          {editing &&
-            (confirmDelete ? (
-              <button
-                type="button"
-                onClick={remove}
-                disabled={saving}
-                className="min-h-[52px] flex-1 rounded-2xl bg-rose-500 px-4 font-semibold text-white active:scale-[0.98] disabled:opacity-60"
-              >
-                Tap again to delete
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                aria-label="Delete expense"
-                className="grid h-[52px] w-[52px] place-items-center rounded-2xl border border-rose-200 text-rose-500 active:bg-rose-50"
-              >
-                <Trash2 size={20} />
-              </button>
-            ))}
-          <button
-            type="button"
-            onClick={submit}
-            disabled={!canSave}
-            className="min-h-[52px] flex-1 rounded-2xl bg-gradient-to-r from-[#8B5CF6] to-[#7C3AED] px-4 font-semibold text-white shadow-lg shadow-violet-300/50 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            {saving ? "Saving…" : editing ? "Save changes" : "Log expense"}
-          </button>
-        </div>
       </div>
     </BottomSheet>
   );

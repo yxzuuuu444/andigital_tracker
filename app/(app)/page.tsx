@@ -14,7 +14,7 @@ import type { Expense } from "@/lib/types";
 
 export default function HomePage() {
   const { categories, allowances, expenses, savingsBalance, selectedMonth, setSelectedMonth, currentMonth, ready, activeProfile, switchProfile } = useTracker();
-  const { openExpense, openSavings } = useSheets();
+  const { openExpense } = useSheets();
   const stats = computeMonthStats(categories, allowances, expenses);
   const isCurrent = selectedMonth === currentMonth;
 
@@ -122,16 +122,15 @@ export default function HomePage() {
               Spent {peso(stats.totalSpent)} of {peso(stats.totalAllowance)}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => openSavings()}
+          <Link
+            href="/savings"
             aria-label={`Savings ${peso(savingsBalance)}, open savings`}
             className="flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-white/20 px-3 text-sm font-bold ring-1 ring-white/30 backdrop-blur active:bg-white/30"
           >
             <PiggyBank size={16} />
             <span className="tabular">{peso(savingsBalance)}</span>
             <span className="text-xs font-medium text-violet-100">Saved</span>
-          </button>
+          </Link>
         </div>
 
         <div className="mt-5">

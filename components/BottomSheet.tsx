@@ -10,10 +10,11 @@ type Props = {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  footer?: ReactNode; // pinned to the bottom edge of the sheet
 };
 
 /** Slide-up drawer rendered inside the 448px app column so it matches the phone frame. */
-export function BottomSheet({ open, onClose, title, children }: Props) {
+export function BottomSheet({ open, onClose, title, children, footer }: Props) {
   // Portal to <body>: glass parents use backdrop-filter, which would otherwise
   // trap this fixed sheet inside them and break its position and scrolling.
   const [mounted, setMounted] = useState(false);
@@ -82,6 +83,11 @@ export function BottomSheet({ open, onClose, title, children }: Props) {
               </div>
             </div>
             <div className="px-5">{children}</div>
+            {footer && (
+              <div className="sticky bottom-0 mt-4 border-t border-white/60 glass-strong px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3">
+                {footer}
+              </div>
+            )}
           </motion.section>
         </div>
       )}

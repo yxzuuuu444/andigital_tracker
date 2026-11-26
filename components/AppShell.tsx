@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { BottomNav } from "@/components/BottomNav";
 import { AddExpenseSheet } from "@/components/AddExpenseSheet";
-import { SavingsSheet } from "@/components/SavingsSheet";
 import { DuckMascot } from "@/components/DuckMascot";
 import { useTracker } from "@/lib/tracker-context";
 import { PinLock } from "@/components/PinLock";
@@ -14,7 +13,6 @@ import type { Expense } from "@/lib/types";
 
 type SheetsState = {
   openExpense: (editing?: Expense | null) => void;
-  openSavings: (mode?: "withdraw" | "deposit") => void;
   notifyLogged: () => void;
 };
 
@@ -40,17 +38,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
-  const [savingsOpen, setSavingsOpen] = useState(false);
   const [loggedKey, setLoggedKey] = useState<number | null>(null);
 
   const openExpense = useCallback((e?: Expense | null) => {
     setEditing(e ?? null);
     setExpenseOpen(true);
-  }, []);
-  const [savingsMode, setSavingsMode] = useState<"withdraw" | "deposit">("withdraw");
-  const openSavings = useCallback((mode?: "withdraw" | "deposit") => {
-    setSavingsMode(mode === "deposit" ? "deposit" : "withdraw"); // ignores click events
-    setSavingsOpen(true);
   }, []);
   const notifyLogged = useCallback(() => {
     const key = Date.now();
@@ -59,8 +51,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ openExpense, openSavings, notifyLogged }),
-    [openExpense, openSavings, notifyLogged],
+    () => ({ openExpense, notifyLogged }),
+    [openExpense, notifyLogged],
   );
 
   return (
@@ -74,7 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {ready && user ? children : <div className="grid min-h-[60dvh] place-items-center"><DuckMascot mood="idle" size={88} /></div>}
         </main>
 
-        {user && <BottomNav pathname={pathname} onAdd={() => openExpense(null)} onSavings={() => openSavings()} />}
+        {user && <BottomNav pathname={pathname} onAdd={() => openExpense(null)} />}
 
         {locked && <PinLock profile={activeProfile} onUnlock={() => setLockTick((t) => t + 1)} />}
 
@@ -108,7 +100,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </AnimatePresence>
 
         <AddExpenseSheet open={expenseOpen} editing={editing} onClose={() => setExpenseOpen(false)} />
-        <SavingsSheet open={savingsOpen} onClose={() => setSavingsOpen(false)} initialMode={savingsMode} />
       </div>
     </SheetsContext.Provider>
   );
