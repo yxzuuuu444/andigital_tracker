@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { History, Home, Plus, Settings } from "lucide-react";
+import { History, Home, PiggyBank, Plus, Settings } from "lucide-react";
 import { motion } from "framer-motion";
 
-type Props = { pathname: string; onAdd: () => void };
+type Props = { pathname: string; onAdd: () => void; onSavings: () => void };
 
 const tabs = [
   { href: "/", label: "Home", Icon: Home },
@@ -13,7 +13,7 @@ const tabs = [
 
 const tabsRight = [{ href: "/settings", label: "Settings", Icon: Settings }] as const;
 
-export function BottomNav({ pathname, onAdd }: Props) {
+export function BottomNav({ pathname, onAdd, onSavings }: Props) {
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   const item = (href: string, label: string, Icon: typeof Home) => {
@@ -53,7 +53,17 @@ export function BottomNav({ pathname, onAdd }: Props) {
           <Plus size={30} strokeWidth={2.6} />
         </motion.button>
 
-        <div className="flex flex-1 justify-around">{tabsRight.map((t) => item(t.href, t.label, t.Icon))}</div>
+        <div className="flex flex-1 justify-around">
+          <button
+            type="button"
+            onClick={onSavings}
+            className="flex min-h-[44px] min-w-[64px] flex-col items-center justify-center gap-0.5 rounded-2xl px-3 text-[11px] font-medium text-[#9F94BD] active:text-[#7C3AED]"
+          >
+            <PiggyBank size={22} strokeWidth={2} />
+            Savings
+          </button>
+          {tabsRight.map((t) => item(t.href, t.label, t.Icon))}
+        </div>
       </div>
     </nav>
   );

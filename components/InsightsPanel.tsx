@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useTracker } from "@/lib/tracker-context";
+import { DuckMascot } from "@/components/DuckMascot";
 import { getSupabase } from "@/lib/supabase/client";
 import { cents, monthRange, peso, shiftMonth, shortMonthLabel } from "@/lib/format";
 
@@ -81,6 +82,10 @@ export function InsightsPanel() {
 
   return (
     <section aria-label="Insights" className="glass space-y-5 rounded-3xl p-5">
+      <div className="flex items-center gap-3">
+        <DuckMascot mood="idle" variant="rubber" size={40} />
+        <p className="text-sm font-bold text-[#2E1065]">This month at a glance</p>
+      </div>
       {/* Donut by category */}
       <div className="flex items-center gap-4">
         <Donut slices={stats.top} total={stats.total} />

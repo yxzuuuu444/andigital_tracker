@@ -21,7 +21,10 @@ export default function HistoryPage() {
   return (
     <div className="space-y-5">
       <header className="pt-2">
-        <h1 className="text-xl font-extrabold text-[#2E1065]">History</h1>
+        <div className="flex items-center gap-2">
+          <DuckMascot mood="idle" size={36} />
+          <h1 className="text-xl font-extrabold text-[#2E1065]">History</h1>
+        </div>
       </header>
 
       <div role="tablist" aria-label="History sections" className="grid grid-cols-3 rounded-2xl bg-[#EDE9FE] p-1">
@@ -301,7 +304,12 @@ function GoalsSection() {
   return (
     <section aria-label="Savings goals" className="space-y-3">
       <h2 className="text-sm font-bold text-[#2E1065]">Goals</h2>
-      {goals.length === 0 && <p className="glass rounded-2xl p-4 text-sm text-[#6B5F8A]">Set a goal, like a trip or a new phone, and watch your pond fill toward it.</p>}
+      {goals.length === 0 && (
+        <div className="glass flex items-center gap-3 rounded-2xl p-4">
+          <DuckMascot mood="empty" size={64} />
+          <p className="text-sm text-[#6B5F8A]">Set a goal, like a trip or a new phone, and watch your pond fill toward it.</p>
+        </div>
+      )}
       {goals.map((g) => {
         const pct = Math.min(1, savingsBalance / g.target);
         const done = savingsBalance >= g.target;

@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {ready && user ? children : <div className="grid min-h-[60dvh] place-items-center"><DuckMascot mood="idle" size={88} /></div>}
         </main>
 
-        {user && <BottomNav pathname={pathname} onAdd={() => openExpense(null)} />}
+        {user && <BottomNav pathname={pathname} onAdd={() => openExpense(null)} onSavings={() => openSavings()} />}
 
         {locked && <PinLock profile={activeProfile} onUnlock={() => setLockTick((t) => t + 1)} />}
 

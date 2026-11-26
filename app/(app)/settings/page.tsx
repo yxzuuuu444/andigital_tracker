@@ -77,7 +77,7 @@ export default function SettingsPage() {
       </header>
 
       {/* Allowance */}
-      <Fold title={<span className="flex items-center gap-2">Allowance · {monthLabel(selectedMonth)}</span>}>
+      <Fold title={<span className="flex items-center gap-2"><DuckMascot mood="idle" size={28} />Allowance · {monthLabel(selectedMonth)}</span>}>
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-[#6B5F8A]">Starting amount</span>
           <div className="mt-1 flex items-center gap-2 rounded-2xl border border-[#EDE9FE] bg-white/40 px-3 focus-within:border-[#8B5CF6]">
@@ -191,7 +191,7 @@ function CategoriesSection() {
   };
 
   return (
-    <Fold title={<span className="flex items-center gap-2">Categories & limits</span>}>
+    <Fold title={<span className="flex items-center gap-2"><DuckMascot mood="idle" size={28} />Categories & limits</span>}>
       <p className="text-xs text-[#6B5F8A]">
         <strong>Warn only</strong> shows an amber/rose banner and still saves. <strong>Hard block</strong> stops saving over the limit unless you confirm an override.
       </p>

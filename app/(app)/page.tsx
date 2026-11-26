@@ -110,6 +110,7 @@ export default function HomePage() {
       {/* Hero balance */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#A78BFA] via-[#8B5CF6] to-[#7C3AED] p-5 text-white shadow-xl shadow-violet-300/40">
         <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" aria-hidden />
+        <DuckMascot mood="relaxed" size={64} className="pointer-events-none absolute -bottom-3 -right-2 opacity-95" title="Duck floating on the hero card" />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wider text-violet-100">Remaining allowance</p>
@@ -222,7 +223,10 @@ export default function HomePage() {
 
       {/* Recent expenses */}
       <section aria-labelledby="recent-h" className="space-y-3">
-        <h2 id="recent-h" className="text-sm font-bold text-[#2E1065]">Recent expenses</h2>
+        <div className="flex items-center gap-2">
+          <DuckMascot mood="idle" size={30} />
+          <h2 id="recent-h" className="text-sm font-bold text-[#2E1065]">Recent expenses</h2>
+        </div>
         {expenses.length === 0 ? (
           <div className="flex flex-col items-center rounded-3xl border border-dashed border-[#DDD6FE] glass p-6 text-center">
             <DuckMascot mood={mood === "empty" ? "empty" : "idle"} size={96} />

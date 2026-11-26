@@ -5,6 +5,7 @@ import { categoryIcon } from "@/lib/icons";
 
 import { useEffect, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
+import { DuckMascot } from "@/components/DuckMascot";
 import { useTracker } from "@/lib/tracker-context";
 import { cents, peso } from "@/lib/format";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/types";
@@ -61,7 +62,10 @@ export function SavingsSheet({ open, onClose, initialMode = "withdraw" }: Props)
     <BottomSheet open={open} onClose={onClose} title={mode === "withdraw" ? "Use / Withdraw Savings" : "Add to Savings"}>
       <div className="space-y-5 pt-1">
         <div className="rounded-2xl bg-gradient-to-br from-[#EDE9FE] to-[#DDD6FE] p-4">
-          <p className="text-xs font-semibold text-[#5B21B6]">Available in savings</p>
+          <div className="flex items-center gap-3">
+            <DuckMascot mood="relaxed" variant="rubber" size={52} />
+            <p className="text-xs font-semibold text-[#5B21B6]">Available in savings</p>
+          </div>
           <p className="tabular text-2xl font-extrabold text-[#4C1D95]">{peso(savingsBalance)}</p>
         </div>
 
